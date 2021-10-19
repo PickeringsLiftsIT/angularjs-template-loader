@@ -6,7 +6,7 @@ const os = require("os");
 const templateUrlRegex = /templateUrl\s*:(\s*['"`](.*?)['"`]\s*([,}]))/gm;
 const stringRegex = /(['`"])((?:[^\\]\\\1|.)*?)\1/g;
 
-function replaceStringsWithRequires(string, relativeTo) {
+function replaceStringsWithRequires(string, relativeTo, postProcess) {
   return string.replace(stringRegex, (match, quote, url) => {
     if (relativeTo) {
       url = path.join(relativeTo, url);
@@ -15,7 +15,13 @@ function replaceStringsWithRequires(string, relativeTo) {
       url = "./" + url;
     }
     if (os.platform() === "win32") url = url.replace(/\\/g, '\\\\');
-    return "require('" + url + "')";
+
+    const replaced = "require('" + url + "')";
+    const processed = postProcess
+      ? postProcess(replaced)
+      : replaced;
+
+    return processed
   });
 }
 
@@ -30,7 +36,7 @@ module.exports = function(source, sourcemap) {
     // with: template: require('./path/to/template.html')
     // or: template: require('/root/app/path/template.html')
     // if `relativeTo` option is set to /root/app.
-    return "template:" + replaceStringsWithRequires(url, options && options.relativeTo);
+    return "template:" + replaceStringsWithRequires(url, options && options.relativeTo, options && options.postProcess);
   });
 
   // Support for tests
